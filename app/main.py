@@ -60,7 +60,12 @@ _tasks: dict[int, Task] = {}
 _next_id = 1
 
 
+
 # --- Routes ---------------------------------------------------------------------
+@app.get("/")
+def root():
+    return {"message": "Hello from GitOps!"}
+
 @app.get("/health")
 def health():
     return {"status": "ok", "version": APP_VERSION}
