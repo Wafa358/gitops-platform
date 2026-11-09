@@ -4,7 +4,7 @@ image:
   repository: ghcr.io/wafa358/task-api
   # Updated automatically by the CI pipeline (update-manifest job) - GitOps:
   # CI writes the new tag to Git, ArgoCD sees the commit and deploys it.
-  tag: "65d143a"
+  tag: "310217f"
   pullPolicy: IfNotPresent
 
 service:
