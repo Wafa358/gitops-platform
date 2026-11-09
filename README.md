@@ -20,7 +20,7 @@ End-to-end platform for a small Python API: **CI with GitHub Actions → contain
 ## Roadmap
 
 - [x] **Step 1:** Task API (FastAPI) with `/health` and `/metrics`, tests, multi-stage Dockerfile, CI pipeline pushing to GHCR
-- [ ] **Step 2:** Helm chart + local Kubernetes (kind) + ArgoCD (GitOps)
+- [x] **Step 2:** Helm chart + local Kubernetes (kind) + ArgoCD (GitOps)
 - [ ] **Step 3:** Monitoring: kube-prometheus-stack, Grafana dashboard, alert rule
 - [ ] **Step 4:** Terraform: VPC, EC2 running k3s, security groups, S3 remote state, budget alert
 - [ ] **Step 5:** Screenshots, lessons learned
@@ -78,4 +78,20 @@ kubectl create namespace argocd
 kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 kubectl apply -f k8s/argocd/task-api-app.yaml
 kubectl port-forward svc/task-api -n task-api 8000:80   # http://localhost:8000/health
+```
+
+## Monitoring
+
+The monitoring stack (`kube-prometheus-stack`: Prometheus Operator, Prometheus, Alertmanager, Grafana) is itself deployed by ArgoCD from `k8s/argocd/monitoring-app.yaml`. The Task API chart ships its own observability as code:
+
+| File | What it does |
+|---|---|
+| `templates/servicemonitor.yaml` | Prometheus scrapes `/metrics` on every pod every 15 s |
+| `templates/prometheusrule.yaml` | Alerts: `TaskApiDown` (critical), `TaskApiHighErrorRate` (> 5 % 5xx), `TaskApiHighLatency` (p95 > 500 ms) |
+| `templates/dashboard.yaml` + `dashboards/task-api.json` | Grafana dashboard: pods up, request rate, error rate, p50/p95/p99 latency, CPU per pod |
+
+```bash
+kubectl apply -f k8s/argocd/monitoring-app.yaml
+kubectl port-forward svc/monitoring-grafana -n monitoring 3000:80                      # Grafana
+kubectl port-forward svc/monitoring-kube-prometheus-prometheus -n monitoring 9090:9090  # Prometheus
 ```

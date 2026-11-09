@@ -1,0 +1,61 @@
+# ArgoCD Application: installs the monitoring stack (Prometheus Operator,
+# Prometheus, Alertmanager, Grafana, kube-state-metrics) from the official
+# Helm chart - deployed the GitOps way, like the app itself.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    # Pin an exact chart version (find it with: helm search repo kube-prometheus-stack)
+    targetRevision: "93.1.1"
+    helm:
+      releaseName: monitoring
+      valuesObject:
+        # Default Kubernetes alert rules are noisy on a local kind cluster;
+        # this project ships its own rules for the Task API instead.
+        defaultRules:
+          create: false
+        # Control-plane components are not reachable for scraping on kind
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        # node-exporter needs host mounts that Docker Desktop doesn't provide
+        nodeExporter:
+          enabled: false
+        prometheus:
+          prometheusSpec:
+            # Pick up ServiceMonitors / PrometheusRules from every namespace,
+            # not only the ones labelled with this Helm release
+            serviceMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            retention: 2d
+            resources:
+              requests:
+                cpu: 100m
+                memory: 400Mi
+        grafana:
+          sidecar:
+            dashboards:
+              # Load dashboards shipped as ConfigMaps by any application
+              searchNamespace: ALL
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The Prometheus Operator CRDs are too large for client-side apply
+      - ServerSideApply=true

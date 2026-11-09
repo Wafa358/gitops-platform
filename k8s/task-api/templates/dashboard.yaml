@@ -1,0 +1,14 @@
+{{- if .Values.monitoring.enabled }}
+# Grafana's sidecar loads any ConfigMap labelled grafana_dashboard=1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dashboard
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: task-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  task-api.json: |-
+{{ .Files.Get "dashboards/task-api.json" | indent 4 }}
+{{- end }}

@@ -13,6 +13,12 @@ service:
 
 containerPort: 8000
 
+# Prometheus scraping, alert rules and Grafana dashboard
+# (requires the monitoring stack - see k8s/argocd/monitoring-app.yaml)
+monitoring:
+  enabled: true
+  scrapeInterval: 15s
+
 resources:
   requests:
     cpu: 50m
