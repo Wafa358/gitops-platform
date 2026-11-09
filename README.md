@@ -57,4 +57,25 @@ docker run -p 8000:8000 task-api
 1. **test**: runs `pytest` on every push and pull request
 2. **build-and-push**: on `main` only, builds the image and pushes it to GitHub Container Registry, tagged with the short commit SHA and `latest`
 
+3. **update-manifest**: writes the new image tag into `k8s/task-api/values.yaml` and commits it. ArgoCD picks up the commit and deploys it: the pipeline never needs cluster credentials.
+
 Design choices: non-root container user, multi-stage build for a small image, metrics labelled by route template (not raw URL) to keep cardinality low, Docker layer cache in GitHub Actions.
+
+## Kubernetes & GitOps
+
+```
+k8s/
+├── task-api/              Helm chart (Deployment with readiness/liveness probes, resource limits, Service)
+└── argocd/
+    └── task-api-app.yaml  ArgoCD Application: auto-sync, prune, self-heal
+```
+
+Run it locally on a [kind](https://kind.sigs.k8s.io/) cluster:
+
+```bash
+kind create cluster --name gitops
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -f k8s/argocd/task-api-app.yaml
+kubectl port-forward svc/task-api -n task-api 8000:80   # http://localhost:8000/health
+```

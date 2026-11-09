@@ -1,0 +1,24 @@
+# ArgoCD Application: tells ArgoCD to keep the cluster in sync with the
+# Helm chart in this Git repository (the "source of truth").
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Wafa358/gitops-platform.git
+    targetRevision: main
+    path: k8s/task-api
+    helm:
+      releaseName: task-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-api
+  syncPolicy:
+    automated:
+      prune: true      # delete resources removed from Git
+      selfHeal: true   # undo manual changes made with kubectl
+    syncOptions:
+      - CreateNamespace=true
