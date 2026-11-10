@@ -12,3 +12,6 @@ crash.log
 *.kubeconfig
 kubeconfig*
 .env
+
+# kubeconfig written by the kind provider
+infra/local/*-config
