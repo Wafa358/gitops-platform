@@ -21,7 +21,7 @@ End-to-end platform for a small Python API: **CI with GitHub Actions → contain
 
 - [x] **Step 1:** Task API (FastAPI) with `/health` and `/metrics`, tests, multi-stage Dockerfile, CI pipeline pushing to GHCR
 - [x] **Step 2:** Helm chart + local Kubernetes (kind) + ArgoCD (GitOps)
-- [ ] **Step 3:** Monitoring: kube-prometheus-stack, Grafana dashboard, alert rule
+- [x] **Step 3:** Monitoring: kube-prometheus-stack, Grafana dashboard, alert rule
 - [ ] **Step 4:** Terraform: VPC, EC2 running k3s, security groups, S3 remote state, budget alert
 - [ ] **Step 5:** Screenshots, lessons learned
 
@@ -78,6 +78,26 @@ kubectl create namespace argocd
 kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 kubectl apply -f k8s/argocd/task-api-app.yaml
 kubectl port-forward svc/task-api -n task-api 8000:80   # http://localhost:8000/health
+```
+
+## Infrastructure on AWS (Terraform)
+
+```
+infra/
+├── bootstrap/   S3 bucket for remote state (versioned, encrypted, private) + monthly budget alert
+└── main/        VPC, public subnet, internet gateway, security group, EC2 instance running k3s
+```
+
+- **Remote state** in S3 with native locking (`use_lockfile`, Terraform ≥ 1.10). `bootstrap` writes `main/backend.hcl` itself.
+- **Security group**: SSH and the Kubernetes API are open to *my current IP only* (resolved at plan time), HTTP 80 is public for the demo.
+- **Cost-aware**: no NAT gateway, single small instance, encrypted 20 GB gp3 volume, budget alert at 5 USD. `terraform destroy` after each demo.
+- **Zero manual steps on the server**: cloud-init installs k3s and ArgoCD and registers the same `task-api` Application with cloud values (`ingress.enabled=true`, `monitoring.enabled=false`). From there, the cluster is driven by Git like the local one.
+
+```bash
+cd infra/bootstrap && terraform init && terraform apply -var="budget_email=you@example.com"
+cd ../main && terraform init -backend-config=backend.hcl && terraform apply
+curl $(terraform output -raw app_url)
+terraform destroy
 ```
 
 ## Monitoring

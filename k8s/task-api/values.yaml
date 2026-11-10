@@ -13,6 +13,10 @@ service:
 
 containerPort: 8000
 
+# Public HTTP access through an ingress controller (enabled on the AWS cluster)
+ingress:
+  enabled: false
+
 # Prometheus scraping, alert rules and Grafana dashboard
 # (requires the monitoring stack - see k8s/argocd/monitoring-app.yaml)
 monitoring:

@@ -1,0 +1,63 @@
+#!/bin/bash
+# Cloud-init bootstrap: k3s (lightweight Kubernetes) + ArgoCD + the task-api Application.
+# After this script, the cluster is managed 100% by GitOps from the repo.
+set -euxo pipefail
+exec > /var/log/gitops-bootstrap.log 2>&1
+
+# 2 GB swap: k3s + ArgoCD are tight on a 2 GB instance
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+# Public IP via IMDSv2, added to the API server certificate so kubectl works remotely
+TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+
+# k3s ships with Traefik as ingress controller on port 80
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --tls-san $PUBLIC_IP --write-kubeconfig-mode 644" sh -
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+until kubectl get nodes | grep -q " Ready"; do sleep 5; done
+
+# ArgoCD
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl -n argocd rollout status deployment/argocd-repo-server --timeout=600s
+kubectl -n argocd rollout status deployment/argocd-server --timeout=600s
+
+# The same Helm chart as locally, with cloud-specific values:
+# public ingress on, monitoring off (the small instance can't fit Prometheus)
+cat <<'EOF' | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${repo_url}
+    targetRevision: main
+    path: k8s/task-api
+    helm:
+      releaseName: task-api
+      valuesObject:
+        ingress:
+          enabled: true
+        monitoring:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-api
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+EOF
+
+echo "Bootstrap finished"
