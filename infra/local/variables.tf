@@ -15,12 +15,12 @@ variable "repo_url" {
 #   helm search repo argo/argocd-apps
 variable "argocd_chart_version" {
   type    = string
-  default = "REPLACE_WITH_ARGO_CD_VERSION"
+  default = "10.17.1"
 }
 
 variable "argocd_apps_chart_version" {
   type    = string
-  default = "REPLACE_WITH_ARGOCD_APPS_VERSION"
+  default = "2.0.8"
 }
 
 variable "argocd_host_port" {
