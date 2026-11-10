@@ -22,7 +22,7 @@ End-to-end platform for a small Python API: **CI with GitHub Actions → contain
 - [x] **Step 1:** Task API (FastAPI) with `/health` and `/metrics`, tests, multi-stage Dockerfile, CI pipeline pushing to GHCR
 - [x] **Step 2:** Helm chart + local Kubernetes (kind) + ArgoCD (GitOps)
 - [x] **Step 3:** Monitoring: kube-prometheus-stack, Grafana dashboard, alert rule
-- [ ] **Step 4:** Terraform: VPC, EC2 running k3s, security groups, S3 remote state, budget alert
+- [ ] **Step 4:** Terraform: whole local platform as code (kind + ArgoCD + app-of-apps), plus a validated AWS variant (VPC, EC2/k3s, S3 remote state, budget alert)
 - [ ] **Step 5:** Screenshots, lessons learned
 
 ## The application
@@ -80,7 +80,26 @@ kubectl apply -f k8s/argocd/task-api-app.yaml
 kubectl port-forward svc/task-api -n task-api 8000:80   # http://localhost:8000/health
 ```
 
-## Infrastructure on AWS (Terraform)
+## Infrastructure as Code (Terraform)
+
+### Local platform (`infra/local`)
+
+One command builds the whole environment from scratch, one command removes it:
+
+```bash
+cd infra/local
+terraform init
+terraform apply     # kind cluster + ArgoCD (Helm) + root "platform" Application
+terraform destroy
+```
+
+- **kind** provider creates the Kubernetes cluster and publishes the ArgoCD UI on `https://localhost:8443` (no port-forward).
+- **helm** provider installs ArgoCD from its official chart (pinned version).
+- **App of apps**: Terraform creates a single root Application pointing at `k8s/argocd/`. ArgoCD then deploys `task-api` and the monitoring stack from Git. Terraform owns the platform, Git owns the workloads.
+
+### AWS variant (`infra/bootstrap` + `infra/main`)
+
+Validated (`terraform validate`) and ready to deploy:
 
 ```
 infra/
