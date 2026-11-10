@@ -22,7 +22,7 @@ End-to-end platform for a small Python API: **CI with GitHub Actions → contain
 - [x] **Step 1:** Task API (FastAPI) with `/health` and `/metrics`, tests, multi-stage Dockerfile, CI pipeline pushing to GHCR
 - [x] **Step 2:** Helm chart + local Kubernetes (kind) + ArgoCD (GitOps)
 - [x] **Step 3:** Monitoring: kube-prometheus-stack, Grafana dashboard, alert rule
-- [ ] **Step 4:** Terraform: whole local platform as code (kind + ArgoCD + app-of-apps), plus a validated AWS variant (VPC, EC2/k3s, S3 remote state, budget alert)
+- [x] **Step 4:** Terraform: whole local platform as code (kind + ArgoCD + app-of-apps), plus a validated AWS variant (VPC, EC2/k3s, S3 remote state, budget alert)
 - [ ] **Step 5:** Screenshots, lessons learned
 
 ## The application
